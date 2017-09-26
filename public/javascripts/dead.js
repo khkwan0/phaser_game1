@@ -4,6 +4,7 @@ var deadState = {
     },
     create: function () {
         game.stage.setBackgroundColor(0xfbf6d5);
+        game.add.button(game.world.centerX - 95, game.world.centerY, 'continue_button', this.actionOnClick, this, 2, 1, 0);
 
         text = game.add.text(game.world.centerX, 250, 'SCORE: ' + score);
         text.anchor.set(0.5);
@@ -15,7 +16,6 @@ var deadState = {
         text.setShadow(0, 0, 'rgba(0,0,0,0.5)', 0);
         game.input.mouse.releasePointerLock();
 
-        button = game.add.button(game.world.centerX - 95, 400, 'continue_button', this.actionOnClick, this, 2, 1, 0);
     },
     update: function () {
         var offset = moveToXY(game.input.activePointer, text.x, text.y, 8);
