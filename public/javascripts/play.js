@@ -1,8 +1,12 @@
 var w = winW;
 var h = winH;
+
+// sprites
 var player;
 var weapon;
 var enemies;
+var coin;
+var powerup;
 
 var wave;
 var currentWave;
@@ -20,6 +24,10 @@ var score;
 var movementX;
 var previousX;
 var newDown;
+
+var enemyScale = 4;
+var enemySpeed = 5;
+var enemyHealth = 15;
 
 var playState = {
     create: function () {
@@ -60,7 +68,7 @@ var playState = {
         }
         if (player.hp > 0) {
             if (enemies.children.length > 0) {
-                enemies.y += 10;
+                enemies.y += enemySpeed;
             } else {
                 enemies.y = 0;
             }
@@ -82,10 +90,11 @@ function startWave() {
 function spawnEnemy() {
     if (wave && player.hp > 0 && enemies.children.length <= 0) {
         for (i = 0; i < 5; i++) {
-            var x = i * w / 5 + game.cache.getImage('enemy0').width / 2;
+            var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale / 2;
             var enemy = enemies.create(x, 0, 'enemy0');
             enemy.name = 'enemy' + i;
-            enemy.hp = 20;
+            enemy.scale.setTo(enemyScale, enemyScale);
+            enemy.hp = enemyHealth;
             enemy.checkWorldBounds = true;
             enemy.events.onOutOfBounds.add(destroySprite, this);
         }
@@ -124,10 +133,15 @@ function update() {}
 function enemyHit(bullet, enemy) {
     enemy.hp -= bulletDamage;
     if (enemy.hp <= 0) {
+        enemyPopPrize(enemy.x, bullet.y);
         enemies.remove(enemy, true);
         score ++;
     }
     bullet.kill();
+}
+
+function enemyPopPrize(popX,popY) {
+  console.log(popX, popY);
 }
 
 function playerHit(player, enemy) {
