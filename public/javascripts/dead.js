@@ -6,7 +6,7 @@ var deadState = {
         game.stage.setBackgroundColor(0xfbf6d5);
         game.add.button(game.world.centerX - 95, game.world.centerY, 'continue_button', this.actionOnClick, this, 2, 1, 0);
 
-        text = game.add.text(game.world.centerX, 250, 'SCORE: ' + score);
+        text = game.add.text(game.world.centerX, 250, 'SCORE: ' + (score.coinsCollected + score.enemiesDestroyed));
         text.anchor.set(0.5);
         text.align = 'center';
         text.font = 'Arial Black';
@@ -14,6 +14,15 @@ var deadState = {
         text.fontWeight = 'bold';
         text.fill = '#ec008c';
         text.setShadow(0, 0, 'rgba(0,0,0,0.5)', 0);
+
+        text = game.add.text(game.world.centerX, 100, 'Enemies: '+ score.enemiesDestroyed);
+        text.anchor.set(0.5);
+        text.align = 'center';
+        text = game.add.text(game.world.centerX, 150, 'Coins: '+ score.coinsCollected);
+        text.anchor.set(0.5);
+        text.align = 'center';
+
+        
         game.input.mouse.releasePointerLock();
 
     },
