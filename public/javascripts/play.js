@@ -25,10 +25,10 @@ var movementX;
 var previousX;
 var newDown;
 
-//var enemyBaseHP = 50;
-//
+var enemyBaseHP = 30;
+
 //testing\...
-var enemyBaseHP = 5;
+//var enemyBaseHP = 5;
 
 var enemyMeta = {
   level: 1,
@@ -36,7 +36,7 @@ var enemyMeta = {
   health: enemyBaseHP * this.level
 }
 
-var enemyScale = 4;
+var enemyScale = 1;
 var enemyHPScale = 1;
 var enemySpeed = 5;
 var enemyHealth = enemyBaseHP * enemyHPScale;
@@ -80,6 +80,10 @@ var playState = {
 //    game.debug.bodyInfo(player, 32, 32);
   },
   create: function () {
+    score.coinsCollected = 0;
+    score.enemiesDestroyed = 0;
+
+    score.magnetBonus = 0;
     game.stage.setBackgroundColor(0x000);
     startX = w/2 - game.cache.getImage('player').width;
     player = game.add.sprite(startX, h - game.cache.getImage('player').height * playerScale.y - 80, 'player');
@@ -180,6 +184,7 @@ function spawnEnemy() {
     var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale / 2;
     if (i==0) { console.log(x)}
     var enemy = enemies.create(x, 0, 'enemy0');
+    enemy.anchor.setTo(0.5, 0.5);
     enemy.name = 'enemy' + i;
     enemy.scale.setTo(enemyScale, enemyScale);
     enemy.hp = enemyHealth;
