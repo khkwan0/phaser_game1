@@ -149,7 +149,7 @@ var playState = {
       game.physics.arcade.overlap(player, enemies, playerHit, null, this);
       game.physics.arcade.overlap(weapon.bullets, enemies, enemyHit, null, this);
       game.physics.arcade.overlap(player, prizes, collectPrize, null, this);
-//      weapon.fire();
+      weapon.fire();
     }
     if (player.magnetized) {
       if (prizes.children.length > 0) {
