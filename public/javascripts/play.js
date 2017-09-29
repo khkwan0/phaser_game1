@@ -49,7 +49,7 @@ var coin = {
 }
 
 var powerup = {
-  scale: 1,
+  scale: 0.25,
   gravity: 1024,
   initSpeed: -600,
   powerUpIncrease: 5
@@ -181,7 +181,7 @@ function startWave() {
 function spawnEnemy() {
   wavyPath = false;
   for (i = 0; i < 5; i++) {
-    var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale / 2;
+    var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale;
     if (i==0) { console.log(x)}
     var enemy = enemies.create(x, 0, 'enemy0');
     enemy.anchor.setTo(0.5, 0.5);
@@ -252,7 +252,7 @@ function enemySpawnPrize(popX,popY) {
 }
 
 function spawnMagnet(popX, popY) {
-  var prize = prizes.create(popX + game.cache.getImage('enemy0').width/2, popY - game.cache.getImage('magnet').height * magnet.scale/2, 'magnet');
+  var prize = prizes.create(popX, popY - game.cache.getImage('magnet').height * magnet.scale/2, 'magnet');
   prize.type = 'magnet';
   prize.name = 'prize'+prizeNum;
   prize.body.velocity.setTo(0, magnet.initSpeed);
@@ -262,7 +262,7 @@ function spawnMagnet(popX, popY) {
 }
 
 function spawnPowerup(popX, popY) {
-  var prize = prizes.create(popX + game.cache.getImage('enemy0').width/2, popY - game.cache.getImage('powerup').height * powerup.scale/2, 'powerup');
+  var prize = prizes.create(popX, popY - game.cache.getImage('powerup').height * powerup.scale/2, 'powerup');
   prize.type = 'powerup';
   prize.name = 'prize'+prizeNum;
   prize.scale.setTo(powerup.scale, powerup.scale);
@@ -273,7 +273,7 @@ function spawnPowerup(popX, popY) {
 }
 
 function spawnCoin(popX, popY) {
-  var prize = prizes.create(popX + game.cache.getImage('enemy0').width/2, popY - game.cache.getImage('coin').height * coin.scale/2, 'coin');
+  var prize = prizes.create(popX, popY - game.cache.getImage('coin').height * coin.scale/2, 'coin');
   prize.type = 'coin';
   prize.name = 'prize'+prizeNum;
   prize.scale.setTo(coin.scale, coin.scale);
