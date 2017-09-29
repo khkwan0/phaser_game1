@@ -140,16 +140,13 @@ var playState = {
   },
   update: function () {
     gameTime = game.time.totalElapsedSeconds();
-    game.debug.text('enemies: '+enemies.children.length, 30, 30);
-    game.debug.text('damage: '+bulletDamage, 30, 45);
-    game.debug.text('magnetized? '+player.magnetized, 30, 60);
-    game.debug.text('prizes: '+prizes.children.length, 30, 75);
-    game.debug.text('magnets: '+ magnetsCollected +'/' + (maxMagnets-1), 30, 90);
-    game.debug.text('bonusMagnets: ' + score.magnetBonus, 30, 105);
-    game.debug.text('sin(gametime): ' + Math.sin(gameTime*10)*5, 30, 120);
-    game.debug.text('missiles: ' + missiles.shots, 30, 135);
-    game.debug.text('indestructable: ' + indestructable, 30, 150);
-    game.debug.text('firing: ' + autoFire, 30, 165);
+    game.debug.text('shot power: '+bulletDamage, 30, 45);
+    game.debug.text('magnets: '+ magnetsCollected +'/' + (maxMagnets-1), 30, 60);
+    game.debug.text('bonusMagnets: ' + score.magnetBonus, 30, 75);
+    game.debug.text('missile: ' + missile.numMissiles + '/' + missile.maxMissiles, 30, 90);
+    game.debug.text('missile damage: '+ missile.damage, 30, 105);
+    game.debug.text('indestructable: ' + indestructable, 30, 120);
+    game.debug.text('firing: ' + autoFire, 30, 135);
 
     if (!game.input.pointer1.isDown) {
       newDown = true;
