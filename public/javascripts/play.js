@@ -9,6 +9,7 @@ var weapon;
 var enemies;
 var prizes;
 
+var wavyPath = false;
 var wave;
 var currentWave;
 
@@ -24,7 +25,10 @@ var movementX;
 var previousX;
 var newDown;
 
-var enemyBaseHP = 50
+//var enemyBaseHP = 50;
+//
+//testing\...
+var enemyBaseHP = 5;
 
 var enemyMeta = {
   level: 1,
@@ -33,8 +37,9 @@ var enemyMeta = {
 }
 
 var enemyScale = 4;
+var enemyHPScale = 1;
 var enemySpeed = 5;
-var enemyHealth = 50;;
+var enemyHealth = enemyBaseHP * enemyHPScale;
 
 var prizeNum = 0;  // prize ID counter
 var coin = {
@@ -50,13 +55,25 @@ var powerup = {
   powerUpIncrease: 5
 }
 
+var magnet = {
+  scale: 1,
+  gravity: 1024,
+  initSpeed: -600
+}
+var maxMagnets = 21;
+var magnetsCollected = 0;
+
 var score = {
-  coinsCollected:0,
-  enemiesDestroyed: 0
+  coinsCollected: 0,
+  enemiesDestroyed: 0,
+  magnetBonus: 0
+   
 }
 
 var playerStartHP = 10;
 var enemy0StartHp = 50;
+
+var indestructable = false;
 
 var playState = {
   render: function() {
@@ -66,6 +83,7 @@ var playState = {
     game.stage.setBackgroundColor(0x000);
     startX = w/2 - game.cache.getImage('player').width;
     player = game.add.sprite(startX, h - game.cache.getImage('player').height * playerScale.y - 80, 'player');
+    player.magnetized = false;
     previousX = startX;
     player.scale.setTo(playerScale.x, playerScale.y);
     game.physics.arcade.enable(player);
@@ -94,23 +112,55 @@ var playState = {
     bulletDamage = 5;
     enemyCollisionDamage = 5;
     newDown = true;
+
+    godKey = game.input.keyboard.addKey(Phaser.Keyboard.G);
+    godKey.onDown.add(function() { indestructable=indestructable?false:true}, this);
   },
   update: function () {
-    game.debug.text(enemies.children.length, 30, 30);
-    game.debug.text(bulletDamage, 30, 45);
+    gameTime = game.time.totalElapsedSeconds();
+    game.debug.text('enemies: '+enemies.children.length, 30, 30);
+    game.debug.text('damage: '+bulletDamage, 30, 45);
+    game.debug.text('magnetized? '+player.magnetized, 30, 60);
+    game.debug.text('prizes: '+prizes.children.length, 30, 75);
+    game.debug.text('magnets: '+ magnetsCollected +'/' + (maxMagnets-1), 30, 90);
+    game.debug.text('bonusMagnets: ' + score.magnetBonus, 30, 105);
+    game.debug.text('sin(gametime): ' + Math.sin(gameTime*10)*5, 30, 120);
+    if (typeof enemies.children[0] !== 'undefined') {
+      game.debug.text('enemy0 x: ' + enemies.children[0].x, 30, 135);
+    }
+    game.debug.text('indestructable: ' + indestructable, 30, 150);
+
     if (!game.input.pointer1.isDown) {
       newDown = true;
     }
     if (player.hp > 0) {
       if (enemies.children.length > 0) {
+        if (wavyPath) {
+          enemies.x += Math.sin(gameTime*10)*5;
+    if (typeof enemies.children[0] !== 'undefined') {
+      game.debug.text('enemy0 x: ' + enemies.x, 30, 135);
+    }
+        } 
         enemies.y += enemySpeed;
       } else {
         enemies.y = 0;
+        enemies.x = 0;
       }
       game.physics.arcade.overlap(player, enemies, playerHit, null, this);
       game.physics.arcade.overlap(weapon.bullets, enemies, enemyHit, null, this);
       game.physics.arcade.overlap(player, prizes, collectPrize, null, this);
-      weapon.fire();
+//      weapon.fire();
+    }
+    if (player.magnetized) {
+      if (prizes.children.length > 0) {
+        for (i=0; i<prizes.children.length; i++) {
+          if (prizes.children[i].x> player.x) {
+            prizes.children[i].body.velocity.setTo(-1 * (prizes.children[i].x - player.x)/(maxMagnets - magnetsCollected) ,prizes.children[i].body.velocity.y);
+          } else {
+            prizes.children[i].body.velocity.setTo(1 *(player.x - prizes.children[i].x)/(maxMagnets - magnetsCollected) ,prizes.children[i].body.velocity.y);
+          }
+        }
+      }
     }
   }
 }
@@ -125,15 +175,19 @@ function startWave() {
 }
 
 function spawnEnemy() {
-  console.log('spawn');
+  wavyPath = false;
   for (i = 0; i < 5; i++) {
     var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale / 2;
+    if (i==0) { console.log(x)}
     var enemy = enemies.create(x, 0, 'enemy0');
     enemy.name = 'enemy' + i;
     enemy.scale.setTo(enemyScale, enemyScale);
     enemy.hp = enemyHealth;
     enemy.checkWorldBounds = true;
     enemy.events.onOutOfBounds.add(destroyEnemy, this);
+  }
+  if (game.rnd.frac() < 0.5) {
+    wavyPath = true;
   }
 }
 
@@ -166,8 +220,6 @@ function move(pointer, x, y, click) {
   }
 }
 
-function update() {}
-
 function enemyHit(bullet, enemy) {
   enemy.hp -= bulletDamage;
   if (enemy.hp <= 0) {
@@ -179,13 +231,14 @@ function enemyHit(bullet, enemy) {
 }
 
 function enemySpawnPrize(popX,popY) {
-
-  var roll = game.rnd.frac();
-  if (roll<0.25) {
+  if (game.rnd.frac()<0.25) {
+    prizeNum++;
     var roll2 = game.rnd.frac();
     if (roll2 < 0.25) {
       spawnPowerup(popX, popY);
-    } else {
+    } else if (roll2 <0.50) {
+      spawnMagnet(popX, popY);
+    }else {
       spawnCoin(popX, popY);
     }
   } else {
@@ -193,10 +246,19 @@ function enemySpawnPrize(popX,popY) {
   }
 }
 
+function spawnMagnet(popX, popY) {
+  var prize = prizes.create(popX + game.cache.getImage('enemy0').width/2, popY - game.cache.getImage('magnet').height * magnet.scale/2, 'magnet');
+  prize.type = 'magnet';
+  prize.name = 'prize'+prizeNum;
+  prize.body.velocity.setTo(0, magnet.initSpeed);
+  prize.body.gravity.y = magnet.gravity;
+  prize.checkWorldBounds = true;
+  prize.events.onOutOfBounds.add(prizeOutOfBounds, this);
+}
+
 function spawnPowerup(popX, popY) {
-  var prize = prizes.create(popX + game.cache.getImage('enemy0').width/2, popY - game.cache.getImage('coin').height * coin.scale/2, 'powerup');
+  var prize = prizes.create(popX + game.cache.getImage('enemy0').width/2, popY - game.cache.getImage('powerup').height * powerup.scale/2, 'powerup');
   prize.type = 'powerup';
-  prizeNum++;
   prize.name = 'prize'+prizeNum;
   prize.scale.setTo(powerup.scale, powerup.scale);
   prize.body.velocity.setTo(0, powerup.initSpeed);
@@ -208,7 +270,6 @@ function spawnPowerup(popX, popY) {
 function spawnCoin(popX, popY) {
   var prize = prizes.create(popX + game.cache.getImage('enemy0').width/2, popY - game.cache.getImage('coin').height * coin.scale/2, 'coin');
   prize.type = 'coin';
-  prizeNum++;
   prize.name = 'prize'+prizeNum;
   prize.scale.setTo(coin.scale, coin.scale);
   prize.body.velocity.setTo(0, coin.initSpeed);
@@ -224,21 +285,33 @@ function prizeOutOfBounds(prize) {
 }
 
 function destroyPrize(prize) {
-  console.log('destroyt');
   prizes.remove(prize, true);
 }
 
 function playerHit(player, enemy) {
-  player.hp -= enemyCollisionDamage;
-  enemies.remove(enemy, true);
+  if (!indestructable) {
+    player.hp -= enemyCollisionDamage;
+  }
+  enemySpawnPrize(enemy.x, player.y-100);
+  score.enemiesDestroyed++;
+  destroyEnemy(enemy);
   if (player.hp <= 0) {
     playerDeath();
   }
 }
 
 function collectPrize(player, prize) {
+  console.log(prize.type);
   if (prize.type == 'powerup') {
     bulletDamage += powerup.powerUpIncrease;
+  }
+  if (prize.type == 'magnet') {
+    player.magnetized = true;
+    if (magnetsCollected + 1 < maxMagnets) {
+      magnetsCollected++;
+    } else {
+      score.magnetBonus++;
+    }
   }
   destroyPrize(prize);
   score.coinsCollected++;
