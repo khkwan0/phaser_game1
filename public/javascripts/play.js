@@ -49,7 +49,7 @@ var coin = {
 }
 
 var powerup = {
-  scale: 0.25,
+  scale: 1,
   gravity: 1024,
   initSpeed: -600,
   powerUpIncrease: 5
