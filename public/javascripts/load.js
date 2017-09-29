@@ -6,6 +6,7 @@ var loadState = {
         game.load.image('coin', 'public/images/coin.png');
         game.load.image('powerup', 'public/images/powerup.png');
         game.load.image('magnet', 'public/images/magnet.png');
+        game.load.image('missile', 'public/images/missile.png');
     },
     create: function() {
         game.state.start('mainmenu');

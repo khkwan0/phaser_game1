@@ -63,17 +63,24 @@ var magnet = {
 var maxMagnets = 21;
 var magnetsCollected = 0;
 
+var missile = {
+  scale: 1,
+  gravity: 1024,
+  initSpeed: -600
+}
+
 var score = {
   coinsCollected: 0,
   enemiesDestroyed: 0,
   magnetBonus: 0
-   
 }
+
 
 var playerStartHP = 10;
 var enemy0StartHp = 50;
 
 var indestructable = false;
+var autoFire = true;
 
 var playState = {
   render: function() {
@@ -93,6 +100,12 @@ var playState = {
     game.physics.arcade.enable(player);
     player.hp = playerStartHP;
 
+    missile.damage = 5;
+    missile.maxMissiles = 10;
+    missile.numMissiles = 1;
+
+    magnetsCollected = 0;
+
     enemies = game.add.group();
     enemies.enableBody = true;
     enemies.physicsBodyType = Phaser.Physics.ARCADE;
@@ -102,6 +115,8 @@ var playState = {
     weapon.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
     weapon.bulletSpeed = 3200;
     weapon.trackSprite(player, game.cache.getImage('player').width * playerScale.x - game.cache.getImage('player').width/2, -10);
+
+    initMissiles();
 
     prizes = game.add.group();
     prizes.enableBody = true;
@@ -119,6 +134,8 @@ var playState = {
 
     godKey = game.input.keyboard.addKey(Phaser.Keyboard.G);
     godKey.onDown.add(function() { indestructable=indestructable?false:true}, this);
+    weaponKey = game.input.keyboard.addKey(Phaser.Keyboard.X);
+    weaponKey.onDown.add(function() { autoFire = autoFire?false:true }, this);
   },
   update: function () {
     gameTime = game.time.totalElapsedSeconds();
@@ -129,10 +146,9 @@ var playState = {
     game.debug.text('magnets: '+ magnetsCollected +'/' + (maxMagnets-1), 30, 90);
     game.debug.text('bonusMagnets: ' + score.magnetBonus, 30, 105);
     game.debug.text('sin(gametime): ' + Math.sin(gameTime*10)*5, 30, 120);
-    if (typeof enemies.children[0] !== 'undefined') {
-      game.debug.text('enemy0 x: ' + enemies.children[0].x, 30, 135);
-    }
+    game.debug.text('missiles: ' + missiles.shots, 30, 135);
     game.debug.text('indestructable: ' + indestructable, 30, 150);
+    game.debug.text('firing: ' + autoFire, 30, 165);
 
     if (!game.input.pointer1.isDown) {
       newDown = true;
@@ -141,9 +157,6 @@ var playState = {
       if (enemies.children.length > 0) {
         if (wavyPath) {
           enemies.x += Math.sin(gameTime*10)*5;
-    if (typeof enemies.children[0] !== 'undefined') {
-      game.debug.text('enemy0 x: ' + enemies.x, 30, 135);
-    }
         } 
         enemies.y += enemySpeed;
       } else {
@@ -153,9 +166,46 @@ var playState = {
       game.physics.arcade.overlap(player, enemies, playerHit, null, this);
       game.physics.arcade.overlap(weapon.bullets, enemies, enemyHit, null, this);
       game.physics.arcade.overlap(player, prizes, collectPrize, null, this);
-      weapon.fire();
+      game.physics.arcade.overlap(missiles.bullets, enemies, enemyHitMissile, null, this);
+      if (autoFire) {
+        weapon.fire();
+      }
+      if (missile.numMissiles > 0 && enemies.children.length > 0) {
+        missiles.fire();
+      }
+      if (enemies.children.length == 0) {
+        missiles.bullets.children.forEach(function(aMissile) {
+          aMissile.currentTarget = undefined;
+        })
+      }
+      if (missiles.bullets.children.length > 0 && enemies.children.length > 0) {
+        missiles.bullets.children.forEach(function(aMissile) {
+          if (typeof aMissile.currentTarget == 'undefined') {
+            aMissile.currentTarget = enemies.children[game.rnd.integerInRange(0, enemies.children.length - 1)];
+            aMissile.scale.setTo(0.5, 0.5);
+          }
+        });
+        missiles.bullets.children.forEach(function(aMissile) {
+          if (typeof aMissile.currentTarget !== 'undefined' &&
+              typeof aMissile.body !== 'undefined' &&
+              typeof aMissile.currentTarget.body !== 'undefined' &&
+              aMissile.body.x > aMissile.currentTarget.x) {
+              if (Math.abs(aMissile.body.x - aMissile.currentTarget.x) > 20) {
+                aMissile.body.velocity.setTo(-500, aMissile.body.velocity.y);
+              } else {
+                aMissile.body.velocity.setTo(100, aMissile.body.velocity.y);
+              }
+          } else {
+            if (Math.abs(aMissile.body.x - aMissile.currentTarget.x) > 20) {
+              aMissile.body.velocity.setTo(500, aMissile.body.velocity.y);
+            } else {
+              aMissile.body.velocity.setTo(100, aMissile.body.velocity.y);
+            }
+          }
+        });
+      }
     }
-    if (player.magnetized) {
+    if (magnetsCollected) {
       if (prizes.children.length > 0) {
         for (i=0; i<prizes.children.length; i++) {
           if (prizes.children[i].x> player.x) {
@@ -182,7 +232,6 @@ function spawnEnemy() {
   wavyPath = false;
   for (i = 0; i < 5; i++) {
     var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale;
-    if (i==0) { console.log(x)}
     var enemy = enemies.create(x, 0, 'enemy0');
     enemy.anchor.setTo(0.5, 0.5);
     enemy.name = 'enemy' + i;
@@ -225,6 +274,17 @@ function move(pointer, x, y, click) {
   }
 }
 
+function enemyHitMissile(missile, enemy) {
+  console.log(enemy);
+  enemy.hp -= missile.damage;
+  if (enemy.hp <= 0) {
+    enemySpawnPrize(enemy.x, bullet.y);
+    score.enemiesDestroyed++;
+    destroyEnemy(enemy);
+  }
+  missile.kill();
+}
+
 function enemyHit(bullet, enemy) {
   enemy.hp -= bulletDamage;
   if (enemy.hp <= 0) {
@@ -243,12 +303,24 @@ function enemySpawnPrize(popX,popY) {
       spawnPowerup(popX, popY);
     } else if (roll2 <0.50) {
       spawnMagnet(popX, popY);
+    } else if (roll2 < 0.75) {
+      spawnMissile(popX, popY);
     }else {
       spawnCoin(popX, popY);
     }
   } else {
     spawnCoin(popX, popY);
   }
+}
+
+function spawnMissile(popX, popY) {
+  var prize = prizes.create(popX, popY - game.cache.getImage('missile').height * missile.scale/2, 'missile');
+  prize.type = 'missile';
+  prize.name = 'prize'+prizeNum;
+  prize.body.velocity.setTo(0, missile.initSpeed);
+  prize.body.gravity.y = missile.gravity;
+  prize.checkWorldBounds = true;
+  prize.events.onOutOfBounds.add(prizeOutOfBounds, this);
 }
 
 function spawnMagnet(popX, popY) {
@@ -306,7 +378,6 @@ function playerHit(player, enemy) {
 }
 
 function collectPrize(player, prize) {
-  console.log(prize.type);
   if (prize.type == 'powerup') {
     bulletDamage += powerup.powerUpIncrease;
   }
@@ -318,6 +389,12 @@ function collectPrize(player, prize) {
       score.magnetBonus++;
     }
   }
+  if (prize.type == 'missile') {
+    if (missile.numMissiles+1<missile.maxMissiles+1) {
+      missile.numMissiles++;
+    }
+    initMissiles();
+  }
   destroyPrize(prize);
   score.coinsCollected++;
 }
@@ -328,4 +405,14 @@ function playerDeath() {
 
 function transitionToDead() {
   game.state.start('dead');
+}
+
+function initMissiles() {
+  missiles = game.add.weapon(missile.numMissiles, 'missile');
+  missiles.multifire = true;
+  missiles.bulletAngleOffset = 90;
+  missiles.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+  missiles.bulletSpeed = 500;
+  missiles.trackSprite(player, game.cache.getImage('player').width * playerScale.x - game.cache.getImage('player').width/2, -10);
+
 }
