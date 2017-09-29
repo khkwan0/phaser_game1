@@ -8,6 +8,7 @@ var weapon;
 // sprite group
 var enemies;
 var prizes;
+var bosses; 
 
 var wavyPath = false;
 var wave;
@@ -75,12 +76,13 @@ var score = {
   magnetBonus: 0
 }
 
-
 var playerStartHP = 10;
 var enemy0StartHp = 50;
 
 var indestructable = false;
 var autoFire = true;
+
+var boss = false;
 
 var playState = {
   render: function() {
@@ -89,9 +91,14 @@ var playState = {
   create: function () {
     score.coinsCollected = 0;
     score.enemiesDestroyed = 0;
-
     score.magnetBonus = 0;
+
+    bgmusic = game.add.audio('bgmusic');
+    bgmusic.play();
+    bgmusic.volume = 0.2;
+
     game.stage.setBackgroundColor(0x000);
+
     startX = w/2 - game.cache.getImage('player').width;
     player = game.add.sprite(startX, h - game.cache.getImage('player').height * playerScale.y - 80, 'player');
     player.magnetized = false;
@@ -106,6 +113,10 @@ var playState = {
     missile.numMissiles = 1;
 
     magnetsCollected = 0;
+
+    bosses = game.add.group();
+    bosses.enableBody = true;
+    bosses.physicsBodyType = Phaser.Physics.ARCADE;
 
     enemies = game.add.group();
     enemies.enableBody = true;
@@ -152,7 +163,18 @@ var playState = {
       newDown = true;
     }
     if (player.hp > 0) {
-      if (enemies.children.length > 0) {
+      if (bosses.children.length > 0) {
+        if (bosses.y < h - game.cache.getImage('boss0').height*1.25) { // arriving
+          bosses.children[0].indestructable = true;
+          bosses.y += enemySpeed;
+          t = 0;
+        } else {  // arrived, start attack
+          bosses.children[0].indestructable = false;
+          bosses.x = Math.sin(t)*(w/2);
+          t += 1/60;
+        }
+      }
+      if (enemies.children.length > 0) { // regular wave mechanics
         if (wavyPath) {
           enemies.x += Math.sin(gameTime*10)*5;
         } 
@@ -163,23 +185,30 @@ var playState = {
       }
       game.physics.arcade.overlap(player, enemies, playerHit, null, this);
       game.physics.arcade.overlap(weapon.bullets, enemies, enemyHit, null, this);
-      game.physics.arcade.overlap(player, prizes, collectPrize, null, this);
       game.physics.arcade.overlap(missiles.bullets, enemies, enemyHitMissile, null, this);
+      game.physics.arcade.overlap(weapon.bullets, bosses, enemyBossHit, null, this);
+      game.physics.arcade.overlap(missiles.bullets, bosses, enemyBossHitMissile, null, this);
+      game.physics.arcade.overlap(player, prizes, collectPrize, null, this);
       if (autoFire) {
         weapon.fire();
       }
-      if (missile.numMissiles > 0 && enemies.children.length > 0) {
+      if (missile.numMissiles > 0 && (enemies.children.length > 0 || bosses.children.length > 0)) {
         missiles.fire();
       }
-      if (enemies.children.length == 0) {
+      if (enemies.children.length == 0 || bosses.children.length == 0) {
         missiles.bullets.children.forEach(function(aMissile) {
           aMissile.currentTarget = undefined;
         })
       }
-      if (missiles.bullets.children.length > 0 && enemies.children.length > 0) {
+      if (missiles.bullets.children.length > 0 && (enemies.children.length > 0 || bosses.children.length > 0)) {
         missiles.bullets.children.forEach(function(aMissile) {
           if (typeof aMissile.currentTarget == 'undefined') {
-            aMissile.currentTarget = enemies.children[game.rnd.integerInRange(0, enemies.children.length - 1)];
+            if (enemies.children.length > 0) {
+              aMissile.currentTarget = enemies.children[game.rnd.integerInRange(0, enemies.children.length - 1)];
+            }
+            if (bosses.children.length >0) {
+              aMissile.currentTarget = bosses.children[game.rnd.integerInRange(0, bosses.children.length - 1)];
+            }
             aMissile.scale.setTo(0.5, 0.5);
           }
         });
@@ -223,29 +252,55 @@ function requestLock() {
 
 function startWave() {
   wave = currentWave;
-  spawnEnemy();
+  if (!boss) {
+    spawnEnemy();
+  }
 }
 
 function spawnEnemy() {
-  wavyPath = false;
-  for (i = 0; i < 5; i++) {
-    var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale;
-    var enemy = enemies.create(x, 0, 'enemy0');
-    enemy.anchor.setTo(0.5, 0.5);
-    enemy.name = 'enemy' + i;
-    enemy.scale.setTo(enemyScale, enemyScale);
-    enemy.hp = enemyHealth;
-    enemy.checkWorldBounds = true;
-    enemy.events.onOutOfBounds.add(destroyEnemy, this);
+  if (currentWave % 11 == 0) {
+    boss = true;
+    spawnBoss();
   }
-  if (game.rnd.frac() < 0.5) {
-    wavyPath = true;
+  if (!boss) { 
+    wavyPath = false;
+    for (i = 0; i < 5; i++) {
+      var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale;
+      var enemy = enemies.create(x, 0, 'enemy0');
+      enemy.anchor.setTo(0.5, 0.5);
+      enemy.name = 'enemy' + i;
+      enemy.indestructable = false;
+      enemy.scale.setTo(enemyScale, enemyScale);
+      enemy.hp = enemyHealth;
+      enemy.checkWorldBounds = true;
+      enemy.events.onOutOfBounds.add(destroyEnemy, this);
+    }
+    if (game.rnd.frac() < 0.5) {
+      wavyPath = true;
+    }
+    currentWave++;
+  }
+}
+
+function spawnBoss() {
+  var _boss = bosses.create(game.world.centerX, 0, 'boss0');
+  _boss.anchor.setTo(0.5, 0.5);
+  _boss.name = 'bossx';
+  _boss.hp = 500;
+}
+
+function destroyBossEnemy(_boss) {
+  bosses.remove(_boss);
+  if (bosses.children.length == 0) {
+    boss = false;
+    game.time.events.add(Phaser.Timer.SECOND * 3, startWave, this);
+    currentWave++;
   }
 }
 
 function destroyEnemy(enemy) {
   enemies.remove(enemy, true);
-  if (enemies.children.length == 0) {
+  if (enemies.children.length == 0 && !boss) {
     game.time.events.add(Phaser.Timer.SECOND * 2, spawnEnemy, this);
   }
 }
@@ -272,43 +327,72 @@ function move(pointer, x, y, click) {
   }
 }
 
-function enemyHitMissile(bullet, enemy) {
-  console.log(enemy.hp);
-  enemy.hp -= missile.damage;
-  if (enemy.hp <= 0) {
-    enemySpawnPrize(enemy.x, bullet.y);
+function enemyHitMissile(bullet, _enemy) {
+  if (!_enemy.indestructable) {
+    _enemy.hp -= missile.damage;
+  }
+  if (_enemy.hp <= 0) {
+    enemySpawnPrize(_enemy.x, bullet.y, 1);
     score.enemiesDestroyed++;
-    destroyEnemy(enemy);
+    destroyEnemy(_enemy);
   }
   bullet.kill();
 }
 
-function enemyHit(bullet, enemy) {
-  console.log(enemy.hp);
-  enemy.hp -= bulletDamage;
-  if (enemy.hp <= 0) {
-    enemySpawnPrize(enemy.x, bullet.y);
+function enemyBossHitMissile(bullet, _boss) {
+  if (!_boss.indestructable) {
+    _boss.hp -= missile.damage;
+  }
+  if (_boss.hp <= 0) {
+    enemySpawnPrize(_boss.x, bullet.y, 20);
     score.enemiesDestroyed++;
-    destroyEnemy(enemy);
+    destroyBossEnemy(_boss);
   }
   bullet.kill();
 }
 
-function enemySpawnPrize(popX,popY) {
-  if (game.rnd.frac()<0.25) {
-    prizeNum++;
-    var roll2 = game.rnd.frac();
-    if (roll2 < 0.25) {
-      spawnPowerup(popX, popY);
-    } else if (roll2 <0.50) {
-      spawnMagnet(popX, popY);
-    } else if (roll2 < 0.75) {
-      spawnMissile(popX, popY);
-    }else {
+function enemyBossHit(bullet, _boss) {
+  if (!_boss.indestructable) {
+    _boss.hp -= bulletDamage;
+    console.log(_boss.hp);
+  }
+  if (_boss.hp <= 0) {
+    enemySpawnPrize(_boss.x, bullet.y, 20);
+    score.enemiesDestroyed++;
+    destroyBossEnemy(_boss);
+  }
+  bullet.kill();
+}
+
+function enemyHit(bullet, _enemy) {
+  if (!_enemy.indestructable) {
+    _enemy.hp -= bulletDamage;
+  }
+  if (_enemy.hp <= 0) {
+    enemySpawnPrize(_enemy.x, bullet.y, 1);
+    score.enemiesDestroyed++;
+    destroyEnemy(_enemy);
+  }
+  bullet.kill();
+}
+
+function enemySpawnPrize(popX,popY,amt) {
+  for (i=0;i<amt;i++) {
+    if (game.rnd.frac()<0.25) {
+      prizeNum++;
+      var roll2 = game.rnd.frac();
+      if (roll2 < 0.25) {
+        spawnPowerup(popX, popY);
+      } else if (roll2 <0.50) {
+        spawnMagnet(popX, popY);
+      } else if (roll2 < 0.75) {
+        spawnMissile(popX, popY);
+      }else {
+        spawnCoin(popX, popY);
+      }
+    } else {
       spawnCoin(popX, popY);
     }
-  } else {
-    spawnCoin(popX, popY);
   }
 }
 
@@ -316,7 +400,7 @@ function spawnMissile(popX, popY) {
   var prize = prizes.create(popX, popY - game.cache.getImage('missile').height * missile.scale/2, 'missile');
   prize.type = 'missile';
   prize.name = 'prize'+prizeNum;
-  prize.body.velocity.setTo(0, missile.initSpeed);
+  prize.body.velocity.setTo(game.rnd.integerInRange(-100,100), game.rnd.frac()*2* missile.initSpeed);
   prize.body.gravity.y = missile.gravity;
   prize.checkWorldBounds = true;
   prize.events.onOutOfBounds.add(prizeOutOfBounds, this);
@@ -326,7 +410,7 @@ function spawnMagnet(popX, popY) {
   var prize = prizes.create(popX, popY - game.cache.getImage('magnet').height * magnet.scale/2, 'magnet');
   prize.type = 'magnet';
   prize.name = 'prize'+prizeNum;
-  prize.body.velocity.setTo(0, magnet.initSpeed);
+  prize.body.velocity.setTo(game.rnd.integerInRange(-100,100), game.rnd.frac()*2*magnet.initSpeed);
   prize.body.gravity.y = magnet.gravity;
   prize.checkWorldBounds = true;
   prize.events.onOutOfBounds.add(prizeOutOfBounds, this);
@@ -337,7 +421,7 @@ function spawnPowerup(popX, popY) {
   prize.type = 'powerup';
   prize.name = 'prize'+prizeNum;
   prize.scale.setTo(powerup.scale, powerup.scale);
-  prize.body.velocity.setTo(0, powerup.initSpeed);
+  prize.body.velocity.setTo(game.rnd.integerInRange(-100,100), game.rnd.frac()*2*powerup.initSpeed);
   prize.body.gravity.y = powerup.gravity;
   prize.checkWorldBounds = true;
   prize.events.onOutOfBounds.add(prizeOutOfBounds, this);
@@ -348,7 +432,7 @@ function spawnCoin(popX, popY) {
   prize.type = 'coin';
   prize.name = 'prize'+prizeNum;
   prize.scale.setTo(coin.scale, coin.scale);
-  prize.body.velocity.setTo(0, coin.initSpeed);
+  prize.body.velocity.setTo(game.rnd.integerInRange(-100,100), game.rnd.frac()*2*coin.initSpeed);
   prize.body.gravity.y = coin.gravity;
   prize.checkWorldBounds = true;
   prize.events.onOutOfBounds.add(prizeOutOfBounds, this);
@@ -401,6 +485,7 @@ function collectPrize(player, prize) {
 }
 
 function playerDeath() {
+  bgmusic.stop();
   game.time.events.add(Phaser.Timer.SECOND * 4, transitionToDead, this);
 }
 
