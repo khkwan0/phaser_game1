@@ -101,7 +101,8 @@ var playState = {
     player.hp = playerStartHP;
 
     missile.damage = 5;
-    missile.maxMissiles = 10;
+    missile.damageIncrement = 5;
+    missile.maxMissiles = 20;
     missile.numMissiles = 1;
 
     magnetsCollected = 0;
@@ -133,9 +134,9 @@ var playState = {
     newDown = true;
 
     godKey = game.input.keyboard.addKey(Phaser.Keyboard.G);
-    godKey.onDown.add(function() { indestructable=indestructable?false:true}, this);
+    godKey.onDown.add(function() { indestructable=indestructable?false:true;}, this);
     weaponKey = game.input.keyboard.addKey(Phaser.Keyboard.X);
-    weaponKey.onDown.add(function() { autoFire = autoFire?false:true }, this);
+    weaponKey.onDown.add(function() { autoFire = autoFire?false:true; }, this);
   },
   update: function () {
     gameTime = game.time.totalElapsedSeconds();
@@ -274,18 +275,19 @@ function move(pointer, x, y, click) {
   }
 }
 
-function enemyHitMissile(missile, enemy) {
-  console.log(enemy);
+function enemyHitMissile(bullet, enemy) {
+  console.log(enemy.hp);
   enemy.hp -= missile.damage;
   if (enemy.hp <= 0) {
     enemySpawnPrize(enemy.x, bullet.y);
     score.enemiesDestroyed++;
     destroyEnemy(enemy);
   }
-  missile.kill();
+  bullet.kill();
 }
 
 function enemyHit(bullet, enemy) {
+  console.log(enemy.hp);
   enemy.hp -= bulletDamage;
   if (enemy.hp <= 0) {
     enemySpawnPrize(enemy.x, bullet.y);
@@ -392,6 +394,8 @@ function collectPrize(player, prize) {
   if (prize.type == 'missile') {
     if (missile.numMissiles+1<missile.maxMissiles+1) {
       missile.numMissiles++;
+    } else {
+      missile.damage += missile.damageIncrement;
     }
     initMissiles();
   }
