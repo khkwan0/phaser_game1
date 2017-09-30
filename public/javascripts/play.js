@@ -299,66 +299,70 @@ function startWave() {
 }
 
 function spawnEnemy() {
-  graphics = game.add.graphics();
-  if (currentWave % 11 == 0) {
-    boss = true;
-    spawnBoss();
-  }
-  if (!boss) {
-    wavyPath = false;
-    for (i = 0; i < 5; i++) {
-      var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScaleW;
-      var enemy = enemies.create(x, 0, 'enemy0');
-      enemy.anchor.setTo(0.5, 0.5);
-      enemy.name = 'enemy' + i;
-      enemy.indestructable = false;
-      enemy.scale.setTo(enemyScaleW, enemyScaleH);
-      enemy.health = enemyHealth * wave;
-      enemy.maxHealth = enemy.health;
-      enemy.checkWorldBounds = true;
-      enemy.events.onOutOfBounds.add(destroyEnemy, this);
-
-      graphics.beginFill(0xff00ff);
-      graphics.drawRoundedRect(
-        enemies.children[i].x - game.cache.getImage('enemy0').width * enemyScaleW/2,
-        game.cache.getImage('enemy0').height * enemyScaleH/2,
-        game.cache.getImage('enemy0').width * enemyScaleW, 
-        20 * worldScaleW, 
-        10 * worldScaleH);
-      graphics.endFill();
+  if (player.hp > 0) {
+    graphics = game.add.graphics();
+    if (currentWave % 11 == 0) {
+      boss = true;
+      spawnBoss();
     }
+    if (!boss) {
+      wavyPath = false;
+      for (i = 0; i < 5; i++) {
+        var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScaleW;
+        var enemy = enemies.create(x, 0, 'enemy0');
+        enemy.anchor.setTo(0.5, 0.5);
+        enemy.name = 'enemy' + i;
+        enemy.indestructable = false;
+        enemy.scale.setTo(enemyScaleW, enemyScaleH);
+        enemy.health = enemyHealth * wave;
+        enemy.maxHealth = enemy.health;
+        enemy.checkWorldBounds = true;
+        enemy.events.onOutOfBounds.add(destroyEnemy, this);
 
-    enemies.add(graphics);    
-    graphics.body = null;
-    graphics.outOfBoundsKill = true;
-    if (game.rnd.frac() < 0.5) {
-      wavyPath = true;
+        graphics.beginFill(0xff00ff);
+        graphics.drawRoundedRect(
+          enemies.children[i].x - game.cache.getImage('enemy0').width * enemyScaleW/2,
+          game.cache.getImage('enemy0').height * enemyScaleH/2,
+          game.cache.getImage('enemy0').width * enemyScaleW, 
+          20 * worldScaleW, 
+          10 * worldScaleH);
+        graphics.endFill();
+      }
+
+      enemies.add(graphics);    
+      graphics.body = null;
+      graphics.outOfBoundsKill = true;
+      if (game.rnd.frac() < 0.5) {
+        wavyPath = true;
+      }
+      currentWave++;
     }
-    currentWave++;
   }
 }
 
-function spawnBoss() {
+function spawnBoss(dx = game.world.centerX, dy = 0, showHealth = true) {
   graphics = game.add.graphics();
-  var _boss = bosses.create(game.world.centerX, 0, 'boss0');
+  var _boss = bosses.create(dx, dy, 'boss0');
   _boss.anchor.setTo(0.5, 0.5);
   _boss.name = 'bossx';
   _boss.health = bossBaseHP * wave;
   _boss.maxHealth = _boss.health;
   _boss.scale.setTo(worldScaleW, worldScaleH);
-  for (i=0; i<bosses.children.length; i++) {
-    graphics.beginFill(0xff00ff);
-    graphics.drawRoundedRect(
-      bosses.children[i].x - game.cache.getImage('boss0').width * worldScaleW/2,
-      bosses.children[i].y + game.cache.getImage('boss0').height * worldScaleH/2,
-      game.cache.getImage('boss0').width * worldScaleW,
-      20 * worldScaleH,
-      10 * worldScaleW
-    );
-    graphics.endFill();
+  if (showHealth) {
+    for (i=0; i<bosses.children.length; i++) {
+      graphics.beginFill(0xff00ff);
+      graphics.drawRoundedRect(
+        bosses.children[i].x - game.cache.getImage('boss0').width * worldScaleW/2,
+        bosses.children[i].y + game.cache.getImage('boss0').height * worldScaleH/2,
+        game.cache.getImage('boss0').width * worldScaleW,
+        20 * worldScaleH,
+        10 * worldScaleW
+      );
+      graphics.endFill();
+    }
+    graphics.body = null;
+    bosses.add(graphics);
   }
-  graphics.body = null;
-  bosses.add(graphics);
 }
 
 function destroyBossEnemy(_boss) {
@@ -630,6 +634,12 @@ function collectPrize(player, prize) {
 
 function playerDeath() {
   //bgmusic.stop();
+  spawnBoss(game.world.centerX, game.world.centerY, false);
+  var deadStyle = { font: "bold 48px Arial", fill: "#f00", boundsAlignH: "center", boundsAlignV: "middle" }; 
+  var deadText = game.add.text(0,0, "MUAHAHAHAH", deadStyle);
+  deadText.setTextBounds(0, 200, w, 200);
+  
+  
   game.time.events.add(Phaser.Timer.SECOND * 4, transitionToDead, this);
 }
 
