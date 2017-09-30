@@ -1,5 +1,11 @@
-var w = winW;
+var referenceW = 980;
+var referenceH = 1562;
+
+var w = winH * referenceW / referenceH;
 var h = winH;
+
+var worldScaleW = w/referenceW;
+var worldScaleH = h/referenceH;
 
 // sprites
 var player;
@@ -19,8 +25,8 @@ var bulletDamage;
 var enemyCollisionDamage;
 
 var playerScale = {
-  x: 1,
-  y: 1
+  x: 1 * worldScaleW,
+  y: 1 * worldScaleH
 };
 
 var movementX;
@@ -32,27 +38,28 @@ var enemyBaseHP = 30;
 //testing\...
 //var enemyBaseHP = 5;
 
-var enemyScale = 1;
+var enemyScaleH = 1 * worldScaleH;
+var enemyScaleW = 1 * worldScaleW;
 var enemyHPScale = 1;
 var enemySpeed = 5;
 var enemyHealth = enemyBaseHP * enemyHPScale;
 
 var prizeNum = 0; // prize ID counter
 var coin = {
-  scale: 1,
+  scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600
 }
 
 var powerup = {
-  scale: 1,
+  scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600,
   powerUpIncrease: 5
 }
 
 var magnet = {
-  scale: 1,
+  scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600
 }
@@ -60,7 +67,7 @@ var maxMagnets = 21;
 var magnetsCollected = 0;
 
 var missile = {
-  scale: 1,
+  scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600
 }
@@ -104,10 +111,9 @@ var playState = {
 
     game.stage.setBackgroundColor(0x000);
 
-
-    startX = w / 2 - game.cache.getImage('player').width;
+    startX = w / 2 - game.cache.getImage('player').width * playerScale.x;
     player = game.add.sprite(startX, h - game.cache.getImage('player').height * playerScale.y - 80, 'player');
-    player.magnetized = false;
+    //player.anchor.setTo(0.5,0.5);
     previousX = startX;
     player.scale.setTo(playerScale.x, playerScale.y);
     game.physics.arcade.enable(player);
@@ -117,6 +123,7 @@ var playState = {
     missile.damageIncrement = 5;
     missile.maxMissiles = 20;
     missile.numMissiles = 1;
+    initMissiles();
 
     magnetsCollected = 0;
 
@@ -134,7 +141,12 @@ var playState = {
     weapon.bulletAngleOffset = 90;
     weapon.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
     weapon.bulletSpeed = 3200;
-    weapon.trackSprite(player, game.cache.getImage('player').width * playerScale.x - game.cache.getImage('player').width / 2, -10);
+    weapon.bullets.forEach(function(b) {
+      b.anchor.setTo(0.5, 0.5);
+      b.scale.setTo(worldScaleW, worldScaleH);
+      b.body.updateBounds();
+    })
+    weapon.trackSprite(player, player.body.width/2, -player.body.height * 0.5);
 
     initMissiles();
 
@@ -169,12 +181,14 @@ var playState = {
     style = { font: "bold 48px Arial", fill: "#fff", boundsAlignH: "left", boundsAlignV: "middle" };    
     scoreText = game.add.text(0,0, "Score: 0", style);
     scoreText.setTextBounds(0.01 * w, 0.05*h,0.9*w, 0.1*h);
+    game.time.advancedTiming = true;
   },
   update: function () {
     gameTime = game.time.totalElapsedSeconds();
     
-    game.debug.text('w h: ' + w + ' ' + h, 60, 30);
-    game.debug.text('level: '+wave, 60, 45);
+    game.debug.text('fps: ' + game.time.fps, 60, 30);
+    game.debug.text('w h: ' + w + ' ' + h, 60, 45);
+    game.debug.text('level: '+wave, 60, 60);
     /*
     game.debug.text('magnets: ' + magnetsCollected + '/' + (maxMagnets - 1), 30, 60);
     game.debug.text('bonusMagnets: ' + score.magnetBonus, 30, 75);
@@ -192,7 +206,7 @@ var playState = {
     }
     if (player.hp > 0) {
       if (bosses.children.length > 0) {
-        if (bosses.y < game.cache.getImage('boss0').height / 2) { // arriving
+        if (bosses.y < game.cache.getImage('boss0').height *worldScaleH / 2) { // arriving
           bosses.children[0].indestructable = true;
           bosses.y += 5;
           t = 0;
@@ -237,7 +251,6 @@ var playState = {
             if (bosses.children.length > 0) {
               aMissile.currentTarget = bosses.children[game.rnd.integerInRange(0, bosses.children.length - 1)];
             }
-            aMissile.scale.setTo(0.5, 0.5);
           }
         });
         missiles.bullets.children.forEach(function (aMissile) {
@@ -294,19 +307,24 @@ function spawnEnemy() {
   if (!boss) {
     wavyPath = false;
     for (i = 0; i < 5; i++) {
-      var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScale;
+      var x = i * w / 5 + game.cache.getImage('enemy0').width * enemyScaleW;
       var enemy = enemies.create(x, 0, 'enemy0');
       enemy.anchor.setTo(0.5, 0.5);
       enemy.name = 'enemy' + i;
       enemy.indestructable = false;
-      enemy.scale.setTo(enemyScale, enemyScale);
+      enemy.scale.setTo(enemyScaleW, enemyScaleH);
       enemy.health = enemyHealth * wave;
       enemy.maxHealth = enemy.health;
       enemy.checkWorldBounds = true;
       enemy.events.onOutOfBounds.add(destroyEnemy, this);
 
       graphics.beginFill(0xff00ff);
-      graphics.drawRoundedRect(x - game.cache.getImage('enemy0').width * enemyScale/2, game.cache.getImage('enemy0').height/2 + 5, game.cache.getImage('enemy0').width * enemyScale, 20, 10);
+      graphics.drawRoundedRect(
+        enemies.children[i].x - game.cache.getImage('enemy0').width * enemyScaleW/2,
+        game.cache.getImage('enemy0').height * enemyScaleH/2,
+        game.cache.getImage('enemy0').width * enemyScaleW, 
+        20 * worldScaleW, 
+        10 * worldScaleH);
       graphics.endFill();
     }
 
@@ -327,9 +345,16 @@ function spawnBoss() {
   _boss.name = 'bossx';
   _boss.health = bossBaseHP * wave;
   _boss.maxHealth = _boss.health;
+  _boss.scale.setTo(worldScaleW, worldScaleH);
   for (i=0; i<bosses.children.length; i++) {
     graphics.beginFill(0xff00ff);
-    graphics.drawRoundedRect(bosses.children[i].x - game.cache.getImage('boss0').width * enemyScale/2, bosses.children[i].y + game.cache.getImage('boss0').height/2 + 5, game.cache.getImage('boss0').width * enemyScale, 20, 10);
+    graphics.drawRoundedRect(
+      bosses.children[i].x - game.cache.getImage('boss0').width * worldScaleW/2,
+      bosses.children[i].y + game.cache.getImage('boss0').height * worldScaleH/2,
+      game.cache.getImage('boss0').width * worldScaleW,
+      20 * worldScaleH,
+      10 * worldScaleW
+    );
     graphics.endFill();
   }
   graphics.body = null;
@@ -387,7 +412,13 @@ function enemyHitMissile(bullet, _enemy) {
     for (i=0; i<enemies.children.length; i++) {
       percentage = enemies.children[i].health/enemies.children[i].maxHealth;
       graphics.beginFill(0xff00ff);
-      graphics.drawRoundedRect(enemies.children[i].x - game.cache.getImage('enemy0').width/2, enemies.children[i].y + game.cache.getImage('enemy0').height/2 + 5, game.cache.getImage('enemy0').width * enemyScale * percentage, 20, 10);
+      graphics.drawRoundedRect(
+        enemies.children[i].x - game.cache.getImage('enemy0').width * enemyScaleW/2,
+        game.cache.getImage('enemy0').height * enemyScaleH/2,
+        game.cache.getImage('enemy0').width * enemyScaleW * percentage, 
+        20 * worldScaleW, 
+        10 * worldScaleH
+      );
       graphics.endFill();
     }
     graphics.body = null;
@@ -410,7 +441,13 @@ function enemyBossHitMissile(bullet, _boss) {
     for (i=0; i<bosses.children.length; i++) {
       percentage = bosses.children[i].health/bosses.children[i].maxHealth;
       graphics.beginFill(0xff00ff);
-      graphics.drawRoundedRect(bosses.children[i].x - game.cache.getImage('boss0').width/2, bosses.children[i].y + game.cache.getImage('boss0').height/2 + 5, game.cache.getImage('boss0').width * percentage, 20, 10);
+      graphics.drawRoundedRect(
+        bosses.children[i].x - game.cache.getImage('boss0').width * worldScaleW/2,
+        bosses.children[i].y + game.cache.getImage('boss0').height * worldScaleH/2,
+        game.cache.getImage('boss0').width * worldScaleW * percentage,
+        20 * worldScaleH,
+        10 * worldScaleW
+      );
       graphics.endFill();
     }
     graphics.body = null;
@@ -426,7 +463,6 @@ function enemyBossHitMissile(bullet, _boss) {
 function enemyBossHit(bullet, _boss) {
   if (!_boss.indestructable) {
     _boss.health -= bulletDamage;
-    console.log(_boss.health);
     if (_boss.health < 0) {
       _boss.health = 0;
     }
@@ -434,7 +470,13 @@ function enemyBossHit(bullet, _boss) {
     for (i=0; i<bosses.children.length; i++) {
       percentage = bosses.children[i].health/bosses.children[i].maxHealth;
       graphics.beginFill(0xff00ff);
-      graphics.drawRoundedRect(bosses.children[i].x - game.cache.getImage('boss0').width/2, bosses.children[i].y + game.cache.getImage('boss0').height/2 + 5, game.cache.getImage('boss0').width * percentage, 20, 10);
+      graphics.drawRoundedRect(
+        bosses.children[i].x - game.cache.getImage('boss0').width * worldScaleW/2,
+        bosses.children[i].y + game.cache.getImage('boss0').height * worldScaleH/2,
+        game.cache.getImage('boss0').width * worldScaleW * percentage,
+        20 * worldScaleH,
+        10 * worldScaleW
+      );
       graphics.endFill();
     }
     graphics.body = null;
@@ -458,7 +500,13 @@ function enemyHit(bullet, _enemy) {
     for (i=0; i<enemies.children.length; i++) {
       percentage = enemies.children[i].health/enemies.children[i].maxHealth;
       graphics.beginFill(0xff00ff);
-      graphics.drawRoundedRect(enemies.children[i].x - game.cache.getImage('enemy0').width/2, enemies.children[i].y + game.cache.getImage('enemy0').height/2 + 5, game.cache.getImage('enemy0').width * enemyScale * percentage, 20, 10);
+      graphics.drawRoundedRect(
+        enemies.children[i].x - game.cache.getImage('enemy0').width * enemyScaleW/2,
+        game.cache.getImage('enemy0').height * enemyScaleH/2, 
+        game.cache.getImage('enemy0').width * enemyScaleW * percentage, 
+        20 * worldScaleW, 
+        10 * worldScaleH
+      );
       graphics.endFill();
     }
     graphics.body = null;
@@ -493,6 +541,7 @@ function enemySpawnPrize(popX, popY, amt) {
 
 function spawnMissile(popX, popY) {
   var prize = prizes.create(popX, popY - game.cache.getImage('missile').height * missile.scale / 2, 'missile');
+  prize.scale.setTo(worldScaleW, worldScaleW);
   prize.type = 'missile';
   prize.name = 'prize' + prizeNum;
   prize.body.velocity.setTo(game.rnd.integerInRange(-100, 100), game.rnd.frac() * 2 * missile.initSpeed);
@@ -594,5 +643,10 @@ function initMissiles() {
   missiles.bulletAngleOffset = 90;
   missiles.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
   missiles.bulletSpeed = 500;
+  missiles.bullets.forEach(function(b) {
+    b.anchor.setTo(0.5, 0.5);
+    b.scale.setTo(worldScaleW * 0.5, worldScaleH * 0.5);
+    b.body.updateBounds();
+  })
   missiles.trackSprite(player, game.cache.getImage('player').width * playerScale.x - game.cache.getImage('player').width / 2, -10);
 }

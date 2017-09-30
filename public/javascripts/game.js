@@ -1,4 +1,10 @@
-var game = new Phaser.Game(winW, winH, Phaser.AUTO, 'game');
+var referenceW = 980;
+var referenceH = 1562;
+
+var w = winH * referenceW / referenceH;
+var h = winH;
+
+var game = new Phaser.Game(w, h, Phaser.AUTO, 'game');
 
 game.state.add('boot', bootState);
 game.state.add('load', loadState);
