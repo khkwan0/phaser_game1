@@ -8,7 +8,6 @@ var loadState = {
         game.load.image('magnet', 'public/images/magnet.png');
         game.load.image('missile', 'public/images/missile.png');
         game.load.image('boss0', 'public/images/iain.png');
-        game.load.audio('bgmusic', 'public/music/yinglee.ogg');
     },
     create: function() {
         game.state.start('mainmenu');

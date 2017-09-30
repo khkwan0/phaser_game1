@@ -84,18 +84,23 @@ var autoFire = true;
 
 var boss = false;
 
+var bgmusic;
 var playState = {
+  preload: function() {
+//    game.load.audio('bgmusic', ['public/music/yinglee.mp3','public/music/yinglee.ogg']);
+  },
   render: function() {
 //    game.debug.bodyInfo(player, 32, 32);
+//    game.debug.soundInfo(bgmusic, 0,0);
   },
   create: function () {
     score.coinsCollected = 0;
     score.enemiesDestroyed = 0;
     score.magnetBonus = 0;
-
+/*
     bgmusic = game.add.audio('bgmusic');
     bgmusic.play();
-    bgmusic.volume = 0.2;
+  */
 
     game.stage.setBackgroundColor(0x000);
 
@@ -148,6 +153,7 @@ var playState = {
     godKey.onDown.add(function() { indestructable=indestructable?false:true;}, this);
     weaponKey = game.input.keyboard.addKey(Phaser.Keyboard.X);
     weaponKey.onDown.add(function() { autoFire = autoFire?false:true; }, this);
+//    game.input.onDown.add(function() { bgmusic.mute = false;bgmusic.volume=0.2 }, this);
   },
   update: function () {
     gameTime = game.time.totalElapsedSeconds();
@@ -164,7 +170,7 @@ var playState = {
     }
     if (player.hp > 0) {
       if (bosses.children.length > 0) {
-        if (bosses.y < h - game.cache.getImage('boss0').height*1.25) { // arriving
+        if (bosses.y < game.cache.getImage('boss0').height/2) { // arriving
           bosses.children[0].indestructable = true;
           bosses.y += enemySpeed;
           t = 0;
