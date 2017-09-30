@@ -173,6 +173,7 @@ var playState = {
   update: function () {
     gameTime = game.time.totalElapsedSeconds();
     
+    game.debug.text('w h: ' + w + ' ' + h, 60, 30);
     game.debug.text('level: '+wave, 60, 45);
     /*
     game.debug.text('magnets: ' + magnetsCollected + '/' + (maxMagnets - 1), 30, 60);
