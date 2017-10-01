@@ -10,6 +10,44 @@ var worldScaleH = h/referenceH;
 // sprites
 var player;
 var weapon;
+var missiles;
+var bossWeapon;
+
+bossWeapon = {
+  _bossWeapon: null,
+  bullets: function() {
+    if (this._bossWeapon) {
+      return this._bossWeapon.bullets;
+    } else {
+      return null;
+    }
+  },
+  initBossWeapon: function(numShots = 5, multiFire = false, _sprite = 'bullet1', shotSpeed = 1000, _wielder = null) {
+    this._bossWeapon = game.add.weapon(numShots, _sprite);
+    this._bossWeapon.multifire = multiFire;
+    this._bossWeapon.bulletAngleOffset = 90;
+    this._bossWeapon.bulletKillType = Phaser.Weapon.KILL_WORLD_BOUNDS;
+    this._bossWeapon.bulletSpeed = shotSpeed;
+    this._bossWeapon.fireAngle = 90;
+    this._bossWeapon.bulletAngleVariance = 45;
+    this._bossWeapon.fireRate = 1;
+    this._bossWeapon.bullets.forEach(function(b) {
+      b.anchor.setTo(0.5,0.5);
+      b.scale.setTo(worldScaleW, worldScaleH);
+      b.body.updateBounds();
+    })
+    if (_wielder) {
+      this._bossWeapon.trackSprite(_wielder);
+    }
+  },
+  setWielder: function(_wielder) {
+    this._bossWeapon.trackSprite(_wielder)
+  },
+  fire: function() {
+    //console.log(this._bossWeapon);
+    this._bossWeapon.fire();
+  }
+}
 
 // sprite group
 var enemies;
@@ -25,7 +63,7 @@ var bulletDamage;
 var enemyCollisionDamage;
 
 var playerScale = {
-  x: 1 * worldScaleW,
+  x: 1 * worldScaleW, 
   y: 1 * worldScaleH
 };
 
@@ -85,7 +123,7 @@ var indestructable = false;
 var autoFire = true;
 
 var boss = false;
-var bossBaseHP = 5000;
+var bossBaseHP = 3000;
 
 var bgmusic;
 var graphics;
@@ -124,7 +162,6 @@ var playState = {
     missile.maxMissiles = 20;
     missile.numMissiles = 1;
     initMissiles();
-
     magnetsCollected = 0;
 
     bosses = game.add.group();
@@ -147,6 +184,7 @@ var playState = {
       b.body.updateBounds();
     })
     weapon.trackSprite(player, player.body.width/2, -player.body.height * 0.5);
+    console.log(weapon);
 
     initMissiles();
 
@@ -158,7 +196,7 @@ var playState = {
     game.input.addMoveCallback(move, this);
 
     wave = 1;
-    currentWave = 1;
+    currentWave = 10;
     game.time.events.add(Phaser.Timer.SECOND * 3, startWave, this);
     bulletDamage = 5;
     enemyCollisionDamage = 5;
@@ -182,6 +220,9 @@ var playState = {
     scoreText = game.add.text(0,0, "Score: 0", style);
     scoreText.setTextBounds(0.01 * w, 0.05*h,0.9*w, 0.1*h);
     game.time.advancedTiming = true;
+
+    boss = false;
+    bossWeapon._bossWeapon = null;
   },
   update: function () {
     gameTime = game.time.totalElapsedSeconds();
@@ -207,13 +248,20 @@ var playState = {
     if (player.hp > 0) {
       if (bosses.children.length > 0) {
         if (bosses.y < game.cache.getImage('boss0').height *worldScaleH / 2) { // arriving
-          bosses.children[0].indestructable = true;
+
           bosses.y += 5;
-          t = 0;
+
+          if (bossWeapon._bossWeapon ==  null) {
+            bosses.children[0].indestructable = true;
+            bossWeapon.initBossWeapon(3, true, 'bullet1',500, bosses.children[0]);
+            t = 0;
+          }
+  
         } else { // arrived, start attack
           bosses.children[0].indestructable = false;
           bosses.x = Math.sin(t) * (w / 2);
           t += 1 / 60;
+          bossWeapon.fire();
         }
       }
       if (enemies.children.length > 0) { // regular wave mechanics
@@ -225,12 +273,15 @@ var playState = {
         enemies.y = 0;
         enemies.x = 0;
       }
+
       game.physics.arcade.overlap(player, enemies, playerHit, null, this);
       game.physics.arcade.overlap(weapon.bullets, enemies, enemyHit, null, this);
       game.physics.arcade.overlap(missiles.bullets, enemies, enemyHitMissile, null, this);
       game.physics.arcade.overlap(weapon.bullets, bosses, enemyBossHit, null, this);
       game.physics.arcade.overlap(missiles.bullets, bosses, enemyBossHitMissile, null, this);
       game.physics.arcade.overlap(player, prizes, collectPrize, null, this);
+      game.physics.arcade.overlap(player, bossWeapon.bullets(), playerHit, null, {this:this, isBullet: true});
+
       if (autoFire) {
         weapon.fire();
       }
@@ -485,6 +536,9 @@ function enemyBossHit(bullet, _boss) {
     }
     graphics.body = null;
   }
+  if (game.rnd.frac()<0.05) {
+    enemySpawnPrize(_boss.x, bullet.y, 1);
+  }
   if (_boss.health <= 0) {
     enemySpawnPrize(_boss.x, bullet.y, 20);
     score.enemiesDestroyed++;
@@ -600,11 +654,16 @@ function playerHit(player, _enemy) {
   if (!indestructable) {
     player.hp -= enemyCollisionDamage;
   }
-  enemySpawnPrize(_enemy.x, player.y - 100);
-  score.enemiesDestroyed++;
-  destroyEnemy(_enemy);
   if (player.hp <= 0) {
     playerDeath();
+  } else {
+    enemySpawnPrize(_enemy.x, player.y - 100);
+    score.enemiesDestroyed++;
+    if (this.isBullet) {
+      _enemy.kill();
+    } else {
+      destroyEnemy(_enemy);
+    }
   }
 }
 
@@ -637,9 +696,7 @@ function playerDeath() {
   spawnBoss(game.world.centerX, game.world.centerY, false);
   var deadStyle = { font: "bold 48px Arial", fill: "#f00", boundsAlignH: "center", boundsAlignV: "middle" }; 
   var deadText = game.add.text(0,0, "MUAHAHAHAH", deadStyle);
-  deadText.setTextBounds(0, 200, w, 200);
-  
-  
+  deadText.setTextBounds(0, 200, w, 200);  
   game.time.events.add(Phaser.Timer.SECOND * 4, transitionToDead, this);
 }
 
