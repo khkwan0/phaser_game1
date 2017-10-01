@@ -35,19 +35,21 @@ bossWeapon = {
       b.anchor.setTo(0.5,0.5);
       b.scale.setTo(worldScaleW, worldScaleH);
       b.body.updateBounds();
-    })
+    });
     if (_wielder) {
       this._bossWeapon.trackSprite(_wielder);
     }
   },
   setWielder: function(_wielder) {
-    this._bossWeapon.trackSprite(_wielder)
+    this._bossWeapon.trackSprite(_wielder);
   },
   fire: function() {
     //console.log(this._bossWeapon);
-    this._bossWeapon.fire();
+    if (this._bossWeapon) {
+      this._bossWeapon.fire();
+    }
   }
-}
+};
 
 // sprite group
 var enemies;
@@ -87,20 +89,20 @@ var coin = {
   scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600
-}
+};
 
 var powerup = {
   scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600,
   powerUpIncrease: 5
-}
+};
 
 var magnet = {
   scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600
-}
+};
 var maxMagnets = 21;
 var magnetsCollected = 0;
 
@@ -108,13 +110,13 @@ var missile = {
   scale: worldScaleW,
   gravity: 1024,
   initSpeed: -600
-}
+};
 
 var score = {
   coinsCollected: 0,
   enemiesDestroyed: 0,
   magnetBonus: 0
-}
+};
 
 var playerStartHP = 10;
 var enemy0StartHp = 50;
@@ -162,11 +164,7 @@ var playState = {
     missile.maxMissiles = 20;
     missile.numMissiles = 1;
     initMissiles();
-    magnetsCollected = 0;
-
-    bosses = game.add.group();
-    bosses.enableBody = true;
-    bosses.physicsBodyType = Phaser.Physics.ARCADE;
+    magnetsCollected = 0;;
 
     enemies = game.add.group();
     enemies.enableBody = true;
@@ -182,10 +180,9 @@ var playState = {
       b.anchor.setTo(0.5, 0.5);
       b.scale.setTo(worldScaleW, worldScaleH);
       b.body.updateBounds();
-    })
+    });
     weapon.trackSprite(player, player.body.width/2, -player.body.height * 0.5);
-    console.log(weapon);
-
+    
     initMissiles();
 
     prizes = game.add.group();
@@ -246,17 +243,15 @@ var playState = {
       newDown = true;
     }
     if (player.hp > 0) {
-      if (bosses.children.length > 0) {
+      if (typeof bosses !== 'undefined' && bosses.children.length > 0) {
         if (bosses.y < game.cache.getImage('boss0').height *worldScaleH / 2) { // arriving
-
           bosses.y += 5;
-
           if (bossWeapon._bossWeapon ==  null) {
             bosses.children[0].indestructable = true;
             bossWeapon.initBossWeapon(3, true, 'bullet1',500, bosses.children[0]);
+            console.log(bossWeapon);
             t = 0;
-          }
-  
+          }   
         } else { // arrived, start attack
           bosses.children[0].indestructable = false;
           bosses.x = Math.sin(t) * (w / 2);
@@ -285,21 +280,21 @@ var playState = {
       if (autoFire) {
         weapon.fire();
       }
-      if (missile.numMissiles > 0 && (enemies.children.length > 0 || bosses.children.length > 0)) {
+      if (missile.numMissiles > 0 && (enemies.children.length > 0 || (typeof bosses !== 'undefined' && bosses.children.length > 0))) {
         missiles.fire();
       }
-      if (enemies.children.length == 0 || bosses.children.length == 0) {
+      if (enemies.children.length == 0 || (typeof bosses !== 'undefined' && bosses.children.length == 0)) {
         missiles.bullets.children.forEach(function (aMissile) {
           aMissile.currentTarget = undefined;
-        })
+        });
       }
-      if (missiles.bullets.children.length > 0 && (enemies.children.length > 0 || bosses.children.length > 0)) {
+      if (missiles.bullets.children.length > 0 && (enemies.children.length > 0 || (typeof bosses !== 'undefined' && bosses.children.length > 0))) {
         missiles.bullets.children.forEach(function (aMissile) {
           if (typeof aMissile.currentTarget == 'undefined') {
             if (enemies.children.length > 0) {
               aMissile.currentTarget = enemies.children[game.rnd.integerInRange(0, enemies.children.length - 1)];
             }
-            if (bosses.children.length > 0) {
+            if (typeof bosses !== 'undefined' && bosses.children.length > 0) {
               aMissile.currentTarget = bosses.children[game.rnd.integerInRange(0, bosses.children.length - 1)];
             }
           }
@@ -336,7 +331,7 @@ var playState = {
       }
     }
   }
-}
+};
 
 function requestLock() {
   game.input.mouse.requestPointerLock();
@@ -354,7 +349,7 @@ function spawnEnemy() {
     graphics = game.add.graphics();
     if (currentWave % 11 == 0) {
       boss = true;
-      spawnBoss();
+      spawnBoss(game.world.centerX, 0, true);
     }
     if (!boss) {
       wavyPath = false;
@@ -393,6 +388,9 @@ function spawnEnemy() {
 
 function spawnBoss(dx = game.world.centerX, dy = 0, showHealth = true) {
   graphics = game.add.graphics();
+  bosses = game.add.group();
+  bosses.enableBody = true;
+  bosses.physicsBodyType = Phaser.Physics.ARCADE;
   var _boss = bosses.create(dx, dy, 'boss0');
   _boss.anchor.setTo(0.5, 0.5);
   _boss.name = 'bossx';
@@ -417,12 +415,14 @@ function spawnBoss(dx = game.world.centerX, dy = 0, showHealth = true) {
 }
 
 function destroyBossEnemy(_boss) {
-  bosses.remove(_boss);
+  bosses.remove(_boss, true);
   if (bosses.children.length - 1 == 0) {
     boss = false;
     graphics.destroy();
     game.time.events.add(Phaser.Timer.SECOND * 3, startWave, this);
     currentWave++;
+    bossWeapon._bossWeapon = null;
+    bosses.destroy();
   }
   wave++;
 }
@@ -714,6 +714,6 @@ function initMissiles() {
     b.anchor.setTo(0.5, 0.5);
     b.scale.setTo(worldScaleW * 0.5, worldScaleH * 0.5);
     b.body.updateBounds();
-  })
+  });
   missiles.trackSprite(player, game.cache.getImage('player').width * playerScale.x - game.cache.getImage('player').width / 2, -10);
 }
