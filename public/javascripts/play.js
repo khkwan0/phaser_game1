@@ -196,7 +196,7 @@ var playState = {
     game.input.addMoveCallback(move, this);
 
     wave = 1;
-    currentWave = 10;
+    currentWave = 1;
     game.time.events.add(Phaser.Timer.SECOND * 3, startWave, this);
     bulletDamage = 5;
     enemyCollisionDamage = 5;
